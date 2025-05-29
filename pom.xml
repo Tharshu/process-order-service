@@ -23,7 +23,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>${spring.boot.version}</version>
+		<version>3.2.5</version>
 		<relativePath/>
 	</parent>
 
@@ -146,6 +146,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>process-order-service</finalName>
 		<plugins>
 
 			<plugin>

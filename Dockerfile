@@ -5,10 +5,10 @@ FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 
 # Copy Maven build artifact
-COPY target/process-order-service-0.0.1-SNAPSHOT.jar app.jar
+COPY target/process-order-service.jar app.jar
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8383
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -22,9 +22,9 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orderdb
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: secret
+      SPRING_DATASOURCE_PASSWORD: Test_1user
     ports:
-      - "8080:8080"
+      - "8383:8383"
 
 volumes:
   pg_data:

@@ -98,7 +98,7 @@ public class OrderService {
     }
 
     public OrderResponseDto getOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithCustomerAndCoffeeShop(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
         return orderMapper.toDto(order);
     }
