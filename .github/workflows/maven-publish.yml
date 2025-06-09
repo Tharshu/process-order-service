@@ -10,14 +10,14 @@ on:
 
 env:
   DOCKER_IMAGE_NAME: awstharshidocker/process-order-service
-  EC2_HOST: your.ec2.public.ip
+  EC2_HOST: 52.63.142.46
   EC2_USER: ec2-user
   SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
   DB_HOST: your-db-host
   DB_PORT: 5432
-  DB_NAME: your-db-name
-  DB_USER: your-db-user
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  DB_NAME: orderdb
+  DB_USER: postgres
+  DB_PASSWORD: Test_1user
 
 jobs:
   build-and-deploy:
@@ -51,18 +51,40 @@ jobs:
         docker push $DOCKER_IMAGE_NAME:${{ github.sha }}
 
     - name: Deploy to EC2
-      uses: appleboy/ssh-action@v0.1.7
-      with:
-        host: ${{ env.EC2_HOST }}
-        username: ${{ env.EC2_USER }}
-        key: ${{ env.SSH_PRIVATE_KEY }}
-        script: |
-          docker pull $DOCKER_IMAGE_NAME:${{ github.sha }}
-          docker stop process-order-service || true
-          docker rm process-order-service || true
-          docker run -d --name process-order-service \
-            -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME} \
-            -e SPRING_DATASOURCE_USERNAME=${DB_USER} \
-            -e SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD} \
-            $DOCKER_IMAGE_NAME:${{ github.sha }}
+#      uses: appleboy/ssh-action@v0.1.7
+#      with:
+#        host: ${{ env.EC2_HOST }}
+#        username: ${{ env.EC2_USER }}
+#        key: ${{ env.SSH_PRIVATE_KEY }}
+#        script: |
+#          # Pull the latest Docker image
+#          docker pull $DOCKER_IMAGE_NAME:${{ github.sha }}
+#
+#          # Stop and remove the old application container if it exists
+#          docker stop process-order-service || true
+#          docker rm process-order-service || true
+#
+#          # Stop and remove the old PostgreSQL container if it exists
+#          docker stop $DB_CONTAINER_NAME || true
+#          docker rm $DB_CONTAINER_NAME || true
+#
+#          # Run PostgreSQL container
+#          docker run -d --name $DB_CONTAINER_NAME \
+#            -e POSTGRES_DB=$DB_NAME \
+#            -e POSTGRES_USER=$DB_USER \
+#            -e POSTGRES_PASSWORD=$DB_PASSWORD \
+#            -p $DB_PORT:5432 \
+#            postgres:latest
+#
+#          # Wait for PostgreSQL to be ready
+#          sleep 20
+#
+#          # Run the application container
+#          docker run -d --name process-order-service \
+#            --link $DB_CONTAINER_NAME:db \
+#            -p 8080:8080 \
+#            -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/$DB_NAME \
+#            -e SPRING_DATASOURCE_USERNAME=$DB_USER \
+#            -e SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD \
+#            $DOCKER_IMAGE_NAME:${{ github.sha }}
+#
