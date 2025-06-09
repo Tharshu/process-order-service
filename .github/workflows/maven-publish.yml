@@ -13,11 +13,11 @@ env:
   EC2_HOST: 52.63.142.46
   EC2_USER: ec2-user
   SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-  DB_HOST: your-db-host
   DB_PORT: 5432
   DB_NAME: orderdb
   DB_USER: postgres
   DB_PASSWORD: Test_1user
+  DB_CONTAINER_NAME: postgres-container
 
 jobs:
   build-and-deploy:
@@ -57,34 +57,58 @@ jobs:
 #        username: ${{ env.EC2_USER }}
 #        key: ${{ env.SSH_PRIVATE_KEY }}
 #        script: |
-#          # Pull the latest Docker image
-#          docker pull $DOCKER_IMAGE_NAME:${{ github.sha }}
+#          sudo yum install git -y
+#          sudo yum install docker -y
+#          sudo systemctl start docker
+#          sudo systemctl enable docker
 #
-#          # Stop and remove the old application container if it exists
-#          docker stop process-order-service || true
-#          docker rm process-order-service || true
+#          # Docker Compose install
+#          sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+#          sudo chmod +x /usr/local/bin/docker-compose
 #
-#          # Stop and remove the old PostgreSQL container if it exists
-#          docker stop $DB_CONTAINER_NAME || true
-#          docker rm $DB_CONTAINER_NAME || true
-#
-#          # Run PostgreSQL container
-#          docker run -d --name $DB_CONTAINER_NAME \
-#            -e POSTGRES_DB=$DB_NAME \
-#            -e POSTGRES_USER=$DB_USER \
-#            -e POSTGRES_PASSWORD=$DB_PASSWORD \
-#            -p $DB_PORT:5432 \
-#            postgres:latest
-#
-#          # Wait for PostgreSQL to be ready
-#          sleep 20
-#
-#          # Run the application container
-#          docker run -d --name process-order-service \
-#            --link $DB_CONTAINER_NAME:db \
-#            -p 8080:8080 \
-#            -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/$DB_NAME \
-#            -e SPRING_DATASOURCE_USERNAME=$DB_USER \
-#            -e SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD \
-#            $DOCKER_IMAGE_NAME:${{ github.sha }}
-#
+#          # Clone repo and run containers
+#          rm -rf app || true
+#          git clone https://github.com/<your-username>/<your-repo-name>.git app
+#          cd app
+#          docker-compose down || true
+#          docker-compose up -d --build
+
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ 'ec2-13-126-233-92.ap-south-1.compute.amazonaws.com' }}
+        username: ${{ 'ec2-user' }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          # Pull the latest Docker image
+          docker pull $DOCKER_IMAGE_NAME:${{ github.sha }}
+
+          # Stop and remove the old application container if it exists
+          docker stop process-order-service || true
+          docker rm process-order-service || true
+
+          # Stop and remove the old PostgreSQL container if it exists
+          docker stop $DB_CONTAINER_NAME || true
+          docker rm $DB_CONTAINER_NAME || true
+
+          # Run PostgreSQL container
+          docker run -d --name $DB_CONTAINER_NAME \
+            -e POSTGRES_DB=$DB_NAME \
+            -e POSTGRES_USER=$DB_USER \
+            -e POSTGRES_PASSWORD=$DB_PASSWORD \
+            -p $DB_PORT:5432 \
+            postgres:latest
+
+          # Wait for PostgreSQL to be ready
+          sleep 20
+
+          # Run the application container
+          docker run -d --name process-order-service \
+            --link $DB_CONTAINER_NAME:db \
+            -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/$DB_NAME \
+            -e SPRING_DATASOURCE_USERNAME=$DB_USER \
+            -e SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD \
+            $DOCKER_IMAGE_NAME:${{ github.sha }}
+
