@@ -30,13 +30,14 @@ spring:
 server:
   port: 8383
   servlet:
-    context-path: /order
+    context-path: /order-service
 
 logging:
   level:
     com.shop.process_order_service: INFO
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql: TRACE
+    org.springframework: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 

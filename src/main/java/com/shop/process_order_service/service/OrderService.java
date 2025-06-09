@@ -1,14 +1,9 @@
 package com.shop.process_order_service.service;
 
 
-import com.shop.process_order_service.dto.OrderItemResponseDto;
-import com.shop.process_order_service.dto.OrderRequestDto;
-import com.shop.process_order_service.dto.OrderResponseDto;
-import com.shop.process_order_service.dto.QueuePositionDto;
+import com.shop.process_order_service.dto.*;
 import com.shop.process_order_service.entity.*;
-import com.shop.process_order_service.exception.OrderNotFoundException;
-import com.shop.process_order_service.exception.QueueFullException;
-import com.shop.process_order_service.exception.ShopNotFoundException;
+import com.shop.process_order_service.exception.*;
 import com.shop.process_order_service.mapper.OrderMapper; // Import OrderMapper
 import com.shop.process_order_service.repository.CoffeeShopRepository;
 import com.shop.process_order_service.repository.CustomerRepository;
@@ -21,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,7 +39,7 @@ public class OrderService {
                 request.getCustomerId(), request.getCoffeeShopId());
 
         Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found: " + request.getCustomerId()));
+                .orElseThrow(() -> new CustomerNotFoundException("Customer not found: " + request.getCustomerId()));
 
         CoffeeShop shop = coffeeShopRepository.findById(request.getCoffeeShopId())
                 .orElseThrow(() -> new ShopNotFoundException("Coffee shop not found: " + request.getCoffeeShopId()));
@@ -60,20 +57,20 @@ public class OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         List<OrderItem> orderItems = request.getItems().stream()
-            .map(itemDto -> {
-                MenuItem menuItem = menuItemRepository.findById(itemDto.getMenuItemId())
-                        .orElseThrow(() -> new RuntimeException("Menu item not found: " + itemDto.getMenuItemId()));
-                if (!menuItem.getAvailable()) {
-                    throw new RuntimeException("Menu item not available: " + menuItem.getName());
-                }
-                OrderItem orderItem = orderMapper.toItemEntity(itemDto);
-                orderItem.setOrder(order);
-                orderItem.setMenuItem(menuItem);
-                orderItem.setUnitPrice(menuItem.getPrice());
-                orderItem.setTotalPrice(menuItem.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity())));
-                return orderItem;
-            })
-            .collect(Collectors.toList());
+                .map(itemDto -> {
+                    MenuItem menuItem = menuItemRepository.findById(itemDto.getMenuItemId())
+                            .orElseThrow(() -> new RuntimeException("Menu item not found: " + itemDto.getMenuItemId()));
+                    if (!menuItem.getAvailable()) {
+                        throw new RuntimeException("Menu item not available: " + menuItem.getName());
+                    }
+                    OrderItem orderItem = orderMapper.toItemEntity(itemDto);
+                    orderItem.setOrder(order);
+                    orderItem.setMenuItem(menuItem);
+                    orderItem.setUnitPrice(menuItem.getPrice());
+                    orderItem.setTotalPrice(menuItem.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity())));
+                    return orderItem;
+                })
+                .collect(Collectors.toList());
 
         order.setOrderItems(orderItems);
 
@@ -97,18 +94,26 @@ public class OrderService {
         return orderMapper.toDto(savedOrder);
     }
 
+    @Transactional(readOnly = true)
     public OrderResponseDto getOrder(Long orderId) {
-        Order order = orderRepository.findByIdWithCustomerAndCoffeeShop(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
+        log.info("Fetching order with id: {}", orderId);
+        Order order = orderRepository.findByIdWithOrderItems(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+        log.info("Order found: {}", order);
         return orderMapper.toDto(order);
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponseDto> getCustomerOrders(Long customerId) {
-        List<Order> orders = orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId);
+        List<Order> orders = orderRepository.findOrdersWithCustomerByCustomerId(customerId);
+        if (orders.isEmpty()) {
+            throw new CustomerNotFoundException("No orders found for customer with ID: " + customerId);
+        }
         return orders.stream()
                 .map(orderMapper::toDto)
                 .collect(Collectors.toList());
     }
+
 
     public QueuePositionDto getQueuePosition(Long orderId, Long customerId) {
         Order order = orderRepository.findByIdAndCustomerId(orderId, customerId)
@@ -150,8 +155,55 @@ public class OrderService {
 
         queueService.reorderQueue(order.getCoffeeShop().getId());
 
-        notificationService.sendOrderCancellation(order);
+        String mobileNumber = order.getCustomer().getMobileNumber();
+
+        notificationService.sendOrderCancellation(mobileNumber, order.getId());
 
         log.info("Order cancelled: {}", orderId);
     }
+
+
+    @Transactional
+    public void updateOrderStatuses(Long shopId, OrderStatusUpdateDto update) {
+        log.info("Updating order status for shop: {}, update: {}", shopId, update);
+
+        CoffeeShop shop = coffeeShopRepository.findById(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Coffee shop not found: " + shopId));
+
+        Order orderToUpdate = orderRepository.findByIdInAndCoffeeShopId(update.getOrderId(), shopId);
+
+        if (orderToUpdate == null) {
+            throw new OrderNotFoundException("No order found for shop: " + shopId + " and order ID: " + update.getOrderId());
+        }
+
+        OrderStatus currentStatus = orderToUpdate.getStatus();
+        OrderStatus newStatus = update.getNewStatus();
+
+        if (!isValidStatusTransition(currentStatus, newStatus)) {
+            throw new InvalidOrderStateException("Invalid status transition from " + currentStatus + " to " + newStatus);
+        }
+
+        orderToUpdate.setStatus(newStatus);
+
+        if (newStatus == OrderStatus.COMPLETED) {
+            queueService.reorderQueue(shopId);
+        }
+
+        orderRepository.save(orderToUpdate);
+        log.info("Updated order status for order: {} in shop: {} from {} to {}",
+                orderToUpdate.getId(), shopId, currentStatus, newStatus);
+    }
+
+    private boolean isValidStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+        return switch (currentStatus) {
+            case PENDING ->
+                    newStatus == OrderStatus.CONFIRMED || newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.PROCESSING || newStatus == OrderStatus.COMPLETED;
+            case CONFIRMED ->
+                    newStatus == OrderStatus.PROCESSING || newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.COMPLETED;
+            case PROCESSING -> newStatus == OrderStatus.COMPLETED || newStatus == OrderStatus.CANCELLED;
+            default -> false;
+        };
+    }
+
+
 }

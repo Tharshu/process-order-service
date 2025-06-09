@@ -1,9 +1,6 @@
 package com.shop.process_order_service.mapper;
 
-import com.shop.process_order_service.dto.CustomerRequestDTO;
-import com.shop.process_order_service.dto.OrderRequestDto;
-import com.shop.process_order_service.dto.OrderResponseDto;
-import com.shop.process_order_service.dto.OrderItemResponseDto;
+import com.shop.process_order_service.dto.*;
 import com.shop.process_order_service.entity.Customer;
 import com.shop.process_order_service.entity.Order;
 import com.shop.process_order_service.entity.OrderItem;
@@ -21,7 +18,7 @@ public interface OrderMapper {
     @Mapping(target = "loyaltyScore", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    Customer toEntity(CustomerRequestDTO dto);
+    Customer toEntity(CustomerRequestDto dto);
 
     @Mapping(source = "items", target = "orderItems")
     @Mapping(target = "id", ignore = true)
@@ -35,6 +32,7 @@ public interface OrderMapper {
     @Mapping(target = "updatedAt", ignore = true)
     Order toEntity(OrderRequestDto dto);
 
+    @Mapping(source = "id", target = "orderId")
     @Mapping(source = "customer.name", target = "customerName")
     @Mapping(source = "coffeeShop.name", target = "coffeeShopName")
     @Mapping(source = "orderItems", target = "items")
@@ -52,5 +50,5 @@ public interface OrderMapper {
     @Mapping(source = "notes", target = "notes")
     @Mapping(target = "unitPrice", ignore = true)
     @Mapping(target = "totalPrice", ignore = true)
-    OrderItem toItemEntity(OrderRequestDto.OrderItemDto itemDto);
+    OrderItem toItemEntity(OrderItemDto itemDto);
 }

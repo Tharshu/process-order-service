@@ -2,11 +2,10 @@ package com.shop.process_order_service.entity;
 
 
 public enum OrderStatus {
-    QUEUED,
-    CANCELLED,
     PENDING,
-    COMPLETED,
+    CONFIRMED,
     PROCESSING,
-    SERVED
+    CANCELLED,
+    COMPLETED
 }
 

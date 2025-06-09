@@ -4,7 +4,6 @@ package com.shop.process_order_service.dto;
 import lombok.Data;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Positive;
 
 import java.util.List;
 
@@ -18,15 +17,5 @@ public class OrderRequestDto {
     
     @NotEmpty(message = "Order items cannot be empty")
     private List<OrderItemDto> items;
-    
-    @Data
-    public static class OrderItemDto {
-        @NotNull(message = "Menu item ID is required")
-        private Long menuItemId;
-        
-        @Positive(message = "Quantity must be positive")
-        private Integer quantity;
-        
-        private String notes;
-    }
+
 }

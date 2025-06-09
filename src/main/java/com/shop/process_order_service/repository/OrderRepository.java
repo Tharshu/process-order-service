@@ -14,7 +14,8 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    List<Order> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
+    @Query("select o from Order o left join fetch o.customer where o.customer.id = :customerId order by o.createdAt desc")
+    List<Order> findOrdersWithCustomerByCustomerId(@Param("customerId") Long customerId);
 
     List<Order> findByCoffeeShopIdAndStatusInOrderByQueuePosition(
             Long coffeeShopId, List<OrderStatus> statuses);
@@ -28,8 +29,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             "AND o.status IN ('PENDING', 'CONFIRMED', 'IN_PROGRESS')")
     Integer countActiveOrdersByShop(@Param("shopId") Long shopId);
 
-    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.coffeeShop WHERE o.id = :orderId")
-    Optional<Order> findByIdWithCustomerAndCoffeeShop(@Param("orderId") Long orderId);
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems WHERE o.id = :orderId")
+    Optional<Order> findByIdWithOrderItems(@Param("orderId") Long orderId);
+
+
 
     Optional<Order> findByIdAndCustomerId(Long orderId, Long customerId);
+
+    @Query("SELECT o FROM Order o WHERE o.id IN :orderId AND o.coffeeShop.id = :shopId")
+    Order findByIdInAndCoffeeShopId(Long orderId, Long shopId);
+
 }

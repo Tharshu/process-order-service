@@ -12,7 +12,7 @@ import com.shop.process_order_service.entity.OrderStatus;
 @Data
 @Builder
 public class OrderResponseDto {
-    private Long id;
+    private Long orderId;
     private String customerName;
     private String coffeeShopName;
     private OrderStatus status;

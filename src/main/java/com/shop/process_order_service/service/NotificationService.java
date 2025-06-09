@@ -30,20 +30,21 @@ public class NotificationService {
         }
     }
 
-    @Async
-    public void sendOrderCancellation(Order order) {
-        log.info("Sending order cancellation notification to customer: {} for order: {}",
-                order.getCustomer().getMobileNumber(), order.getId());
-        try {
-            Thread.sleep(1000);
-            log.info("Order cancellation notification sent successfully for order: {}", order.getId());
-        } catch (InterruptedException e) {
-            log.error("Error sending cancellation notification for order {}: {}", order.getId(), e.getMessage());
-            Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            log.error("Unexpected error sending cancellation notification for order {}: {}", order.getId(), e.getMessage());
-        }
+@Async
+public void sendOrderCancellation(String mobileNumber, Long orderId) {
+    log.info("Sending order cancellation notification to customer: {} for order: {}", mobileNumber, orderId);
+    try {
+        Thread.sleep(1000);
+        log.info("Order cancellation notification sent successfully for order: {}", orderId);
+    } catch (InterruptedException e) {
+        log.error("Error sending cancellation notification for order {}: {}", orderId, e.getMessage());
+        Thread.currentThread().interrupt();
+    } catch (Exception e) {
+        log.error("Unexpected error sending cancellation notification for order {}: {}", orderId, e.getMessage());
     }
+}
+
+
 
     @Async
     public void sendQueueUpdateNotification(Order order) {

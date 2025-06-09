@@ -1,7 +1,7 @@
 package com.shop.process_order_service.exception;
 
-
-
+import com.shop.process_order_service.dto.StandardApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,31 +19,46 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleOrderNotFound(OrderNotFoundException e) {
-        log.error("Order not found: ", e);
-        ErrorResponse error = ErrorResponse.builder()
+    public ResponseEntity<StandardApiResponse<Void>> handleOrderNotFoundException(
+            OrderNotFoundException ex, HttpServletRequest request) {
+        log.error("Order not found: ", ex);
+        StandardApiResponse<Void> response = StandardApiResponse.<Void>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .errorCode("ORDER_NOT_FOUND")
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Order Not Found")
-                .message(e.getMessage())
+                .path(request.getRequestURI())
                 .build();
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ResponseEntity<StandardApiResponse<Void>> handleCustomerNotFound(CustomerNotFoundException e) {
+        log.error("Customer not found: ", e);
+        StandardApiResponse<Void> error = StandardApiResponse.<Void>builder()
+            .timestamp(LocalDateTime.now())
+            .success(false)
+            .errorCode("CUSTOMER_NOT_FOUND")
+            .message(e.getMessage())
+            .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+}
+
+
     @ExceptionHandler(QueueFullException.class)
-    public ResponseEntity<ErrorResponse> handleQueueFull(QueueFullException e) {
+    public ResponseEntity<StandardApiResponse<Void>> handleQueueFull(QueueFullException e) {
         log.error("Queue full: ", e);
-        ErrorResponse error = ErrorResponse.builder()
+        StandardApiResponse<Void>  error = StandardApiResponse.<Void>builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-                .error("Queue Full")
+                .success(false)
+                .errorCode("QUEUE_FULL")
                 .message(e.getMessage())
                 .build();
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException e) {
+    public ResponseEntity<StandardApiResponse<Void>> handleValidationExceptions(MethodArgumentNotValidException e) {
         Map<String, String> errors = new HashMap<>();
         e.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -51,35 +66,36 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        ErrorResponse error = ErrorResponse.builder()
+        StandardApiResponse<Void> error = StandardApiResponse.<Void>builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Validation Failed")
+                .success(false)
+                .errorCode("VALIDATION_FAILED")
                 .message("Invalid input parameters")
-                .details(errors)
                 .build();
         return ResponseEntity.badRequest().body(error);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception e) {
-        log.error("Unexpected error: ", e);
-        ErrorResponse error = ErrorResponse.builder()
+    public ResponseEntity<StandardApiResponse<Void>> handleGenericException(
+            Exception ex, HttpServletRequest request) {
+        log.error("Unexpected error: ", ex);
+        StandardApiResponse<Void> response = StandardApiResponse.<Void>builder()
+                .success(false)
+                .message("An unexpected error occurred: " + ex.getMessage())
+                .errorCode("INTERNAL_SERVER_ERROR")
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("An unexpected error occurred")
+                .path(request.getRequestURI())
                 .build();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
-    public ResponseEntity<ErrorResponse> handleTooManyRequests(TooManyRequestsException e) {
+    public ResponseEntity<StandardApiResponse<Void>> handleTooManyRequests(TooManyRequestsException e) {
         log.error("Too many requests: ", e);
-        ErrorResponse error = ErrorResponse.builder()
+        StandardApiResponse<Void>  error = StandardApiResponse.<Void>builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.TOO_MANY_REQUESTS.value())
-                .error("Too Many Requests")
+                .success(false)
+                .errorCode("TOO_MANY_REQUESTS")
                 .message("Request limit exceeded. Please try again later")
                 .build();
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);

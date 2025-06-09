@@ -2,4 +2,4 @@
  Technical assessment project
 
 Swagger API
-http://localhost:8080/api/swagger-ui/index.html/
+http://localhost:8383/order-service/swagger-ui/index.html/
