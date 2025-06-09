@@ -77,18 +77,29 @@ jobs:
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v0.1.7
       with:
-        host: ${{ 'ec2-13-126-233-92.ap-south-1.compute.amazonaws.com' }}
-        username: ${{ 'ec2-user' }}
-        key: ${{ secrets.EC2_SSH_KEY }}
+        host: ${{ env.EC2_HOST }}
+        username: ${{ env.EC2_USER }}
+        key: ${{ env.SSH_PRIVATE_KEY }}
         script: |
+          # Define env vars manually
+          DOCKER_IMAGE_NAME="${{ env.DOCKER_IMAGE_NAME }}"
+          DB_PORT=5432
+          DB_NAME=orderdb
+          DB_USER=postgres
+          DB_PASSWORD=Test_1user
+          DB_CONTAINER_NAME=postgres-container
+
+          # Install Docker if not available
+          sudo yum install -y docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
+
           # Pull the latest Docker image
           docker pull $DOCKER_IMAGE_NAME:${{ github.sha }}
 
-          # Stop and remove the old application container if it exists
+          # Stop and remove old containers if they exist
           docker stop process-order-service || true
           docker rm process-order-service || true
-
-          # Stop and remove the old PostgreSQL container if it exists
           docker stop $DB_CONTAINER_NAME || true
           docker rm $DB_CONTAINER_NAME || true
 
@@ -98,17 +109,16 @@ jobs:
             -e POSTGRES_USER=$DB_USER \
             -e POSTGRES_PASSWORD=$DB_PASSWORD \
             -p $DB_PORT:5432 \
-            postgres:latest
+            postgres:15
 
-          # Wait for PostgreSQL to be ready
+          # Wait for DB to be ready
           sleep 20
 
           # Run the application container
           docker run -d --name process-order-service \
             --link $DB_CONTAINER_NAME:db \
-            -p 8080:8080 \
+            -p 8383:8383 \
             -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/$DB_NAME \
             -e SPRING_DATASOURCE_USERNAME=$DB_USER \
             -e SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD \
             $DOCKER_IMAGE_NAME:${{ github.sha }}
-
